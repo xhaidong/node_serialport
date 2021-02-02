@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Configuration</title>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <script type="text/javascript" src="https://unpkg.com/vue@2.6.12/dist/vue.min.js"></script>
+    <script type="text/javascript" src="https://unpkg.com/ant-design-vue@1.7.2/dist/antd.min.js"></script>
+    <script type="text/javascript" src="https://unpkg.com/axios@0.21.1/dist/axios.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/ant-design-vue@1.7.2/dist/antd.min.css">
+    <style>
+      .btn-list {margin-top: 20px;}
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <a-card>
+        <a-divider orientation="left">Serialport</a-divider>
+        <a-button type="primary" @click="addSp">Add</a-button>
+        <a-list class="btn-list" :grid="{ gutter: 15, column: 3 }" :data-source="sps">
+          <a-list-item slot="renderItem" slot-scope="item, index">
+            <a-card :title="item.name">
+              <a-form-model
+                :ref="'spForm' + index"
+                :rules="spRule"
+                :label-col="labelCol"
+                :wrapper-col="wrapperCol"
+                :model="item">
+                <a-form-model-item prop="name" label="Name">
+                  <a-input disabled v-model="item.name" />
+                </a-form-model-item>
+                <a-form-model-item prop="baudRate" label="Baud rate">
+                  <a-input-number :min="0" v-model="item.baudRate" />
+                </a-form-model-item>
+                <a-form-model-item prop="gga" label="GGA">
+                  <a-switch v-model="item.gga"/>
+                </a-form-model-item>
+                <a-form-model-item prop="rtcm" label="RTCM">
+                  <a-switch v-model="item.rtcm"/>
+                </a-form-model-item>
+                <a-form-model-item prop="cmd" label="CMD">
+                  <a-textarea :auto-size="{ minRows: 3, maxRows: 3 }" v-model="item.cmd" allowClear/>
+                </a-form-model-item>
+                <a-form-model-item prop="host" label="Host">
+                  <a-input v-model="item.host" />
+                </a-form-model-item>
+                <a-form-model-item prop="port"label="Port">
+                  <a-input-number :min="0" v-model="item.port" />
+                </a-form-model-item>
+                <a-form-model-item prop="password" label="Password">
+                  <a-input v-model="item.password" />
+                </a-form-model-item>
+                <a-form-model-item prop="mountpoint" label="Mountpoint">
+                  <a-input v-model="item.mountpoint" />
+                </a-form-model-item>
+                <a-form-model-item prop="ntripEnable" label="Ntripcaster">
+                  <a-switch v-model="item.ntripEnable"/>
+                </a-form-model-item>
+                <a-form-model-item :wrapperCol="{offset: 8, span: 16}">
+                  <a-space>
+                    <a-button @click="handleSpEdit(index)" type="primary">Save</a-button>
+                    <a-button @click="handleSpDel(index)" type="primary">Delete</a-button>
+                  </a-space>
+                </a-form-model-item>
+              </a-form-model>
+            </a-card>
+          </a-list-item>
+        </a-list>
+        <a-divider orientation="left">Ntripcaster</a-divider>
+        <a-button type="primary" @click="addNtrip">Add</a-button>
+
+        <a-modal :visible="visible" :title="title" @ok="handleOK" @cancel="handleCancel">
+          <a-form-model
+            ref="sp"
+            :model="spForm"
+            :rules="spRule"
+            :label-col="labelCol"
+            :wrapper-col="wrapperCol"
+          >
+            <a-form-model-item ref="name" label="Name" prop="name">
+              <a-select v-model="spForm.name" placeholder="Please select serial port">
+                <a-select-option
+                  v-for="(item, key) in spItems"
+                  :key="key"
+                  :disabled="item.disabled"
+                  :value="item.name">{{ item.name }}</a-select-option>
+              </a-select>
+            </a-form-model-item>
+            <a-form-model-item prop="baudRate" label="Baud rate">
+              <a-input-number :min="0" v-model="spForm.baudRate" />
+            </a-form-model-item>
+            <a-form-model-item prop="gga" label="GGA">
+              <a-switch v-model="spForm.gga"/>
+            </a-form-model-item>
+            <a-form-model-item prop="rtcm" label="RTCM">
+              <a-switch v-model="spForm.rtcm"/>
+            </a-form-model-item>
+            <a-form-model-item prop="cmd" label="CMD">
+              <a-textarea :auto-size="{ minRows: 3, maxRows: 3 }" v-model="spForm.cmd" allowClear/>
+            </a-form-model-item>
+            <a-form-model-item prop="host" label="Host">
+              <a-input v-model="spForm.host" />
+            </a-form-model-item>
+            <a-form-model-item prop="port"label="Port">
+              <a-input-number :min="0" v-model="spForm.port" />
+            </a-form-model-item>
+            <a-form-model-item prop="password" label="Password">
+              <a-input v-model="spForm.password" />
+            </a-form-model-item>
+            <a-form-model-item prop="mountpoint" label="Mountpoint">
+              <a-input v-model="spForm.mountpoint" />
+            </a-form-model-item>
+            <a-form-model-item prop="ntripEnable" label="Ntripcaster">
+              <a-switch v-model="spForm.ntripEnable"/>
+            </a-form-model-item>
+          </a-form-model>
+        </a-modal>
+      </a-card>
+    </div>
+  </body>
+  <script>
+    Vue.use(antd);
+    var app = new Vue({
+      el: '#app',
+      data() {
+        return {
+          sps: [],
+          ntrips: [],
+          visible: false,
+          title: '',
+          labelCol: { span: 8 },
+          wrapperCol: { span: 16 },
+          formItemLayout: {
+            labelCol: {
+              xs: { span: 24 },
+              sm: { span: 7 }
+            },
+            wrapperCol: {
+              xs: { span: 24 },
+              sm: { span: 17 }
+            }
+          },
+          formBtnLayout: {
+            wrapperCol: {
+              xs: { span: 24 },
+              sm: { offset: 7, span: 17 }
+            }
+          },
+          spItems: [],
+          spForm: {
+            name: '',
+            baudRate: 0,
+            gga: false,
+            rtcm: false,
+            cmd: '',
+            host: '',
+            port: '',
+            mountpoint: '',
+            password: '',
+            ntripEnable: false,
+          },
+          spRule: {
+            name: [
+              { required: true, message: 'Please select serial port', trigger: 'blur' },
+            ],
+            baudRate: [
+              { required: true, type: 'integer', min: 1, message: 'Please fill in the correct baud rate', trigger: 'blur' }
+            ]
+          },
+          spVisible: false,
+          ntripForm: {},
+          ntripRule: {},
+          ntripVisible: false,
+        }
+      },
+      mounted() {
+        this.getSps();
+        this.getNtrips();
+      },
+      methods: {
+        getSps() {
+          var that = this;
+          this.doPost({
+            action: 'getSps'
+          }, function(data) {
+            if (data.code === 0) {
+              that.sps = data.data;
+            }
+          });
+        },
+        getNtrips() {},
+        addSp() {
+          this.doPost({
+            action: 'getOSp'
+          }, (data) => {
+            if (data.code !== 0) {
+              return;
+            }
+
+            this.spItems = data.data;
+            this.visible = true;
+            this.title = 'Add Serialport';
+
+            if (this.$refs.sp) {
+              this.$refs.sp.resetFields();
+            }
+          });
+        },
+        handleSpEdit(idx) {
+          var form = 'spForm' + idx;
+          var formData = this.sps[idx];
+          formData.idx = idx;
+          var that = this;
+          this.$refs[form].validate(function(valid) {
+            if (valid) {
+              that.$confirm({
+                title: 'Are you sure to modify this entry?',
+                onOk() {
+                  that.doPost({
+                    action: 'editSp',
+                    data: formData
+                  }, function(data) {
+                    if (data.code === 0) {
+                      that.sps = data.data;
+                    }
+                  });
+                },
+                onCancel() {
+                }
+              });
+            } else {
+              return false;
+            }
+          });
+        },
+        handleSpDel(idx) {
+          var that = this;
+          this.$confirm({
+            title: 'Are you sure to delete this entry?',
+            onOk() {
+              that.doPost({
+                action: 'delSp',
+                data: {
+                  idx: idx,
+                }
+              }, function(data) {
+                if (data.code === 0) {
+                  that.sps = data.data;
+                }
+              });
+            },
+            onCancel() {
+            }
+          });
+        },
+        addNtrip() {
+          this.visible = true;
+          this.title = 'Add Ntripcaster';
+        },
+        handleOK() {
+          if (this.title === 'Add Serialport') {
+            return this.handleAddSp();
+          }
+          this.handleAddNtrip();
+        },
+        handleCancel() {
+          this.visible = false;
+        },
+        handleAddSp() {
+          this.$refs.sp.validate(valid => {
+            if (valid) {
+              this.doPost({
+                action: 'addSp',
+                data: this.spForm
+              }, (data) => {
+                if (data.code === 0) {
+                  this.visible = false;
+                  this.$notification.success({
+                    message: 'Success',
+                  });
+                  this.sps = data.data;
+                }
+              });
+            } else {
+              return false;
+            }
+          });
+        },
+        handleAddNtrip() {},
+        doPost(data, cb) {
+          var protocol = window.location.protocol
+          var host = window.location.hostname
+          var port = window.location.port
+          var url = `${protocol}//${host}`
+          if (!((protocol === 'http' && port === '80') ||
+            (protocol === 'https' && port === '443'))) {
+            url += `:${port}`
+          }
+
+          axios({
+            method: 'post',
+            url: url,
+            data: data,
+            responseType: 'json',
+          }).then(function(response) {
+            cb(response.data);
+          });
+        }
+      }
+    })
+  </script>
+</html>
