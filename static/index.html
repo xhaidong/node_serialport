@@ -67,11 +67,49 @@
             </a-card>
           </a-list-item>
         </a-list>
+
         <a-divider orientation="left">Ntripcaster</a-divider>
         <a-button type="primary" @click="addNtrip">Add</a-button>
-
+        <a-list class="btn-list" :grid="{ gutter: 15, column: 3 }" :data-source="ntrips">
+          <a-list-item slot="renderItem" slot-scope="item, index">
+            <a-card :title="item.host + '-' + item.mountpoint">
+              <a-form-model
+                :ref="'ntripForm' + index"
+                :rules="ntripRule"
+                :label-col="labelCol"
+                :wrapper-col="wrapperCol"
+                :model="item">
+                <a-form-model-item prop="host" label="Host">
+                  <a-input v-model="item.host" />
+                </a-form-model-item>
+                <a-form-model-item prop="port"label="Port">
+                  <a-input-number :min="0" v-model="item.port" />
+                </a-form-model-item>
+                <a-form-model-item prop="username" label="Username">
+                  <a-input v-model="item.username" />
+                </a-form-model-item>
+                <a-form-model-item prop="password" label="Password">
+                  <a-input v-model="item.password" />
+                </a-form-model-item>
+                <a-form-model-item prop="mountpoint" label="Mountpoint">
+                  <a-input v-model="item.mountpoint" />
+                </a-form-model-item>
+                <a-form-model-item prop="enable" label="Enable">
+                  <a-switch v-model="item.enable"/>
+                </a-form-model-item>
+                <a-form-model-item :wrapperCol="{offset: 8, span: 16}">
+                  <a-space>
+                    <a-button @click="handleNtripEdit(index)" type="primary">Save</a-button>
+                    <a-button @click="handleNtripDel(index)" type="primary">Delete</a-button>
+                  </a-space>
+                </a-form-model-item>
+              </a-form-model>
+            </a-card>
+          </a-list-item>
+        </a-list>
         <a-modal :visible="visible" :title="title" @ok="handleOK" @cancel="handleCancel">
           <a-form-model
+            v-show="spVisible"
             ref="sp"
             :model="spForm"
             :rules="spRule"
@@ -113,6 +151,34 @@
             </a-form-model-item>
             <a-form-model-item prop="ntripEnable" label="Ntripcaster">
               <a-switch v-model="spForm.ntripEnable"/>
+            </a-form-model-item>
+          </a-form-model>
+
+          <a-form-model
+            v-show="ntripVisible"
+            ref="ntrip"
+            :model="ntripForm"
+            :rules="ntripRule"
+            :label-col="labelCol"
+            :wrapper-col="wrapperCol"
+          >
+            <a-form-model-item prop="host" label="Host">
+              <a-input v-model="ntripForm.host" />
+            </a-form-model-item>
+            <a-form-model-item prop="port"label="Port">
+              <a-input-number :min="0" v-model="ntripForm.port" />
+            </a-form-model-item>
+            <a-form-model-item prop="username" label="Username">
+              <a-input v-model="ntripForm.username" />
+            </a-form-model-item>
+            <a-form-model-item prop="password" label="Password">
+              <a-input v-model="ntripForm.password" />
+            </a-form-model-item>
+            <a-form-model-item prop="mountpoint" label="Mountpoint">
+              <a-input v-model="ntripForm.mountpoint" />
+            </a-form-model-item>
+            <a-form-model-item prop="enable" label="Enable">
+              <a-switch v-model="ntripForm.enable"/>
             </a-form-model-item>
           </a-form-model>
         </a-modal>
@@ -169,8 +235,31 @@
             ]
           },
           spVisible: false,
-          ntripForm: {},
-          ntripRule: {},
+          ntripForm: {
+            host: '',
+            port: 0,
+            username: '',
+            password: '',
+            mountpoint: '',
+            enable: false,
+          },
+          ntripRule: {
+            host: [
+              { required: true, message: 'Please fill in the ntripcaster host', trigger: 'blur' },
+            ],
+            port: [
+              { required: true, type: 'integer', min: 1, message: 'Please fill in the ntripcaster port', trigger: 'blur' }
+            ],
+            username: [
+              { required: true, message: 'Please fill in the ntripcaster username', trigger: 'blur' },
+            ],
+            password: [
+              { required: true, message: 'Please fill in the ntripcaster password', trigger: 'blur' },
+            ],
+            mountpoint: [
+              { required: true, message: 'Please fill in the ntripcaster mountpoint', trigger: 'blur' },
+            ],
+          },
           ntripVisible: false,
         }
       },
@@ -189,7 +278,16 @@
             }
           });
         },
-        getNtrips() {},
+        getNtrips() {
+          var that = this;
+          this.doPost({
+            action: 'getNtrips'
+          }, function(data) {
+            if (data.code === 0) {
+              that.ntrips = data.data;
+            }
+          });
+        },
         addSp() {
           this.doPost({
             action: 'getOSp'
@@ -201,6 +299,8 @@
             this.spItems = data.data;
             this.visible = true;
             this.title = 'Add Serialport';
+            this.spVisible = true;
+            this.ntripVisible = false;
 
             if (this.$refs.sp) {
               this.$refs.sp.resetFields();
@@ -257,6 +357,59 @@
         addNtrip() {
           this.visible = true;
           this.title = 'Add Ntripcaster';
+          this.spVisible = false;
+          this.ntripVisible = true;
+
+          if (this.$refs.ntrip) {
+            this.$refs.ntrip.resetFields();
+          }
+        },
+        handleNtripEdit(idx) {
+          var form = 'ntripForm' + idx;
+          var formData = this.ntrips[idx];
+          formData.idx = idx;
+          var that = this;
+          this.$refs[form].validate(function(valid) {
+            if (valid) {
+              that.$confirm({
+                title: 'Are you sure to modify this entry?',
+                onOk() {
+                  that.doPost({
+                    action: 'editNtrip',
+                    data: formData
+                  }, function(data) {
+                    if (data.code === 0) {
+                      that.ntrips = data.data;
+                    }
+                  });
+                },
+                onCancel() {
+                }
+              });
+            } else {
+              return false;
+            }
+          });
+        },
+        handleNtripDel(idx) {
+          var that = this;
+          this.$confirm({
+            title: 'Are you sure to delete this entry?',
+            onOk() {
+              that.doPost({
+                action: 'delNtrip',
+                data: {
+                  idx: idx,
+                }
+              }, function(data) {
+                if (data.code === 0) {
+                  that.ntrips = data.data;
+                }
+              });
+            },
+            onCancel() {
+            }
+          });
         },
         handleOK() {
           if (this.title === 'Add Serialport') {
@@ -287,7 +440,34 @@
             }
           });
         },
-        handleAddNtrip() {},
+        handleAddNtrip() {
+          var that = this;
+          this.$refs.ntrip.validate(function(valid) {
+            if (valid) {
+              that.doPost({
+                action: 'addNtrip',
+                data: that.ntripForm
+              }, function(data) {
+                if (data.code === 1004) {
+                  that.$notification.error({
+                    message: 'Duplicate data entry',
+                  });
+                  return;
+                }
+
+                if (data.code === 0) {
+                  that.visible = false;
+                  that.$notification.success({
+                    message: 'Success',
+                  });
+                  that.ntrips = data.data;
+                }
+              });
+            } else {
+              return false;
+            }
+          });
+        },
         doPost(data, cb) {
           var protocol = window.location.protocol
           var host = window.location.hostname
