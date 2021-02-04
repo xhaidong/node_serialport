@@ -31,7 +31,12 @@
                   <a-input disabled v-model="item.name" />
                 </a-form-model-item>
                 <a-form-model-item prop="baudRate" label="Baud rate">
-                  <a-input-number :min="0" v-model="item.baudRate" />
+                  <a-select show-search v-model="item.baudRate" @search="handleSearch">
+                    <a-select-option
+                    v-for="(item, key) in filterBaudRates"
+                    :key="key"
+                    :value="item">{{ item }}</a-select-option>
+                  </a-select>
                 </a-form-model-item>
                 <a-form-model-item prop="gga" label="GGA">
                   <a-switch v-model="item.gga"/>
@@ -126,7 +131,12 @@
               </a-select>
             </a-form-model-item>
             <a-form-model-item prop="baudRate" label="Baud rate">
-              <a-input-number :min="0" v-model="spForm.baudRate" />
+              <a-select show-search v-model="spForm.baudRate" @search="handleSearch">
+                <a-select-option
+                v-for="(item, key) in filterBaudRates"
+                :key="key"
+                :value="item">{{ item }}</a-select-option>
+              </a-select>
             </a-form-model-item>
             <a-form-model-item prop="gga" label="GGA">
               <a-switch v-model="spForm.gga"/>
@@ -213,10 +223,13 @@
               sm: { offset: 7, span: 17 }
             }
           },
+          baudRates: [1382400, 921600, 460800, 256000, 230400, 128000, 115200, 76800, 57600, 43000, 38400, 19200, 14400, 9600, 4800, 2400, 1200],
+          baudRateSearched: 0,
+          baudRateValue: '',
           spItems: [],
           spForm: {
             name: '',
-            baudRate: 0,
+            baudRate: '',
             gga: false,
             rtcm: false,
             cmd: '',
@@ -263,6 +276,22 @@
           ntripVisible: false,
         }
       },
+      computed: {
+        filterBaudRates() {
+          var data = this.baudRates;
+          if (this.baudRateSearched) {
+            var that = this;
+            setTimeout(function() {
+              if (data.indexOf(that.baudRateValue) >= 0){
+                return;
+              }
+              data.push(that.baudRateValue);
+            }, 300);
+            that.baudRateSearched = false;
+          }
+          return data;
+        }
+      },
       mounted() {
         this.getSps();
         this.getNtrips();
@@ -287,6 +316,15 @@
               that.ntrips = data.data;
             }
           });
+        },
+        handleSearch(value) {
+          var posReg = /^\d.*$/;
+          if (!posReg.test(value)) {
+            return;
+          }
+
+          this.baudRateSearched = true;
+          this.baudRateValue = parseInt(value);
         },
         addSp() {
           var that = this;
