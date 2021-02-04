@@ -289,21 +289,22 @@
           });
         },
         addSp() {
+          var that = this;
           this.doPost({
             action: 'getOSp'
-          }, (data) => {
+          }, function(data) {
             if (data.code !== 0) {
               return;
             }
 
-            this.spItems = data.data;
-            this.visible = true;
-            this.title = 'Add Serialport';
-            this.spVisible = true;
-            this.ntripVisible = false;
+            that.spItems = data.data;
+            that.visible = true;
+            that.title = 'Add Serialport';
+            that.spVisible = true;
+            that.ntripVisible = false;
 
-            if (this.$refs.sp) {
-              this.$refs.sp.resetFields();
+            if (that.$refs.sp) {
+              that.$refs.sp.resetFields();
             }
           });
         },
@@ -421,18 +422,19 @@
           this.visible = false;
         },
         handleAddSp() {
-          this.$refs.sp.validate(valid => {
+          var that = this;
+          this.$refs.sp.validate(function(valid) {
             if (valid) {
-              this.doPost({
+              that.doPost({
                 action: 'addSp',
-                data: this.spForm
-              }, (data) => {
+                data: that.spForm
+              }, function(data) {
                 if (data.code === 0) {
-                  this.visible = false;
-                  this.$notification.success({
+                  that.visible = false;
+                  that.$notification.success({
                     message: 'Success',
                   });
-                  this.sps = data.data;
+                  that.sps = data.data;
                 }
               });
             } else {
